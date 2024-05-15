@@ -1,5 +1,16 @@
 # AWS para GCP + Looker embed
 
+### Sumário
+
+- [Visão geral do projeto](#visão-geral-do-projeto)
+- [Arquitetura de solução](#arquitetura-de-solução)
+- [Etapas do desenvolvimento](#etapas-do-desenvolvimento)
+  - [Configuração do Google Storage Transfer Service](#configuração-do-google-storage-transfer-service)
+  - [Processamento e Armazenamento de Dados](#processamento-e-armazenamento-de-dados)
+- [Erro de quota](#erro-de-quota)
+- [Testando e visualizando dados](#testando-e-visualizando-dados)
+- [Visualização da configuração final](#visualização-da-configuração-final)
+
 ## Visão geral do projeto
 O objetivo desse projeto é dividido em três partes: 
 1. Executar a transfêrencia de dados da AWS para o ambiente GCP, através de uma pipiline automatizada para a execução desse processo;
@@ -13,43 +24,46 @@ O objetivo desse projeto é dividido em três partes:
 
 ### Configuração do Google Storage Transfer Service
 
-1. <a id="configuracao-do-transfer-job"></a> Passo-a-passo de configuração do tranfer job
-No serviço de Storage Transfer, clique em **CREATE TRANSFER JOB**
-- Aba Get Started
-  - Na opção Source Type, que define de onde os dados virão, selecione **Amazon S3**
-  - Em Destination Type, que define para aonde os dados tranferidos serão armazenados, selecione **Google Cloud Storage**
-  - Em Scheduling mode, que define o modo de agendamento para a transferência de dados, selecione **Batch** (transferência em lote)
-  <img src="./images/ref/storage_transfer/step_one.png">
-- Aba Choose a Source
-  - Em **Bucket or folder**, cole o nome exato da bucket do S3 da AWS
-  - Em **Authentication options**, selecione **AWS IAM role for identity federation** e cole a ARN da role criada dentro da AWS
-  - Marque o checkbox da opção "Filter by prefix", e em "Include objects based on prefix" insira os nomes dos dados de acordo com o propósito de cada job. Isso é importante pois está instruindo o sistema a selecionar e incluir apenas os objetos (arquivos ou dados) cujos nomes começam com esse prefixo específico (nesse caso, o job vai tranferir todos os dados que contém o nome "dados_infomerc" para a bucket do Cloud Storage chamado "dados_infomerc").
-    - Adcionar esse prefixo vai resultar em uma maior eficiência de tranferencia, pois estará limitando a transferência apenas aos dados relevantes, o que pode economizar tempo de processamento, custos e principalmente ajuda a manter a organizacão dos dados transferidos. 
-  <img src="./images/ref/storage_transfer/step_two.jpg">
-- Aba Choose a destination
-  - Em **Bucket or folder**, clique em BROWSER, e, no painel lateral clique no ícone para criar uma nova bucket. 
-  <img src="./images/ref/storage_transfer/step_three_one.png">
-  - Coloque o nome referente aos dados que serão tranferidos (nesse cado, **dados_infomerc**) e a região como **us-east4** e clique em CREATE. 
-  <img src="./images/ref/storage_transfer/step_three_two.png">
-  - Após criado, selecione a bucket criada e clique em SELECT
-- Aba Choose when to run job
-  - Nessa parte, vamos configurar o job para rodar todos os dias, começando a partir do dia seguinte, as 8:00 AM, sem especifícar uma data de término 
-  <img src="./images/ref/storage_transfer/step_four.png">
-- Aba Choose settings
-  - O **Description** de um Job no Storage Transfer atua de maneira semelhante a um nome, facilitando a identificação rápida do propósito do job. Por isso é importante fornecer uma breve descrição para cada Job criado, com base na sua funcionalidade (como na imagem abaixo, esse job vai transferir dados para a bucket **dados_infomerc** dentro da gcp)
-    - Podemos ver a importancia do description na [visualizacão dos jobs](#visualizacao-dos-jobs)
-  <ul>
-    <li><span style="color:red">IMPORTANTE</span>: Em "When to delete", foi marcado a opção **Delete files from destination if they're not also at source**, pois, para esse projeto, por uma necessidade do cliente, é necessário, deletar todos os arquivos do lado do GCP para carregar novamente da fonte, para que não haja duplicidade de dados. </li>
-    <ul>
-      <li>Exemplo: no dia 14, existem dados do dia 1 até o dia 13. Se essa opção não estiver ligada, no dia 15, haverá dados duplicados do dia 1 até o dia 13, mais o arquivo do dia 14. Com essa opção ativada, essa duplicidade será evitada.</li>
-    </ul>
-  </ul>
-  <img src="./images/ref/storage_transfer/step_five.jpg">
-  
-  - Clique em **Create**
+1. <a id="criacao-tranfer-job"></a> Passo-a-passo de configuração do tranfer job
+    - No serviço de Storage Transfer, clique em **CREATE TRANSFER JOB**
+        - Aba Get Started
+            - Na opção Source Type, que define de onde os dados virão, selecione **Amazon S3**
+            - Em Destination Type, que define para aonde os dados tranferidos serão armazenados, selecione **Google Cloud Storage**
+            - Em Scheduling mode, que define o modo de agendamento para a transferência de dados, selecione **Batch** (transferência em lote)
+                <img src="./images/ref/storage_transfer/step_one.png">
+        - Aba Choose a Source
+            - Em **Bucket or folder**, cole o nome exato da bucket do S3 da AWS
+            - Em **Authentication options**, selecione **AWS IAM role for identity federation** e cole a ARN da role criada dentro da AWS
+            - Marque o checkbox da opção "Filter by prefix", e em "Include objects based on prefix" insira os nomes dos dados de acordo com o propósito de cada job. Isso é importante pois está instruindo o sistema a selecionar e incluir apenas os objetos (arquivos ou dados) cujos nomes começam com esse prefixo específico (nesse caso, o job vai tranferir todos os dados que contém o nome **dados_infomerc** para a bucket do Cloud Storage chamado **dados_infomerc**).
+                - Adcionar esse prefixo vai resultar em uma maior eficiência de tranferencia, pois estará limitando a transferência apenas aos dados relevantes, o que pode economizar tempo de processamento, custos e principalmente ajuda a manter a organizacão dos dados transferidos. 
+                <img src="./images/ref/storage_transfer/step_two.jpg"/>
+        - Aba Choose a destination
+            - Em **Bucket or folder**, clique em BROWSER, e, no painel lateral clique no ícone para criar uma nova bucket. 
+                
+                <img src="./images/ref/storage_transfer/step_three_one.png"/>
+            
+            - Coloque o nome referente aos dados que serão tranferidos (nesse cado, **dados_infomerc**) e a região como **us-east4** e clique em CREATE. 
+                
+                <img src="./images/ref/storage_transfer/step_three_two.png"/>
+            
+            - Após criado, selecione a bucket criada e clique em SELECT
+        - Aba Choose when to run job
+            - Nessa parte, vamos configurar o job para rodar todos os dias, começando a partir do dia seguinte, as 8:00 AM, sem especifícar uma data de término 
+                
+                <img src="./images/ref/storage_transfer/step_four.png">
+        
+        - Aba Choose settings
+            - O **Description** de um Job no Storage Transfer atua de maneira semelhante a um nome, facilitando a identificação rápida do propósito do job. Por isso é importante fornecer uma breve descrição para cada Job criado, com base na sua funcionalidade (como na imagem abaixo, esse job vai transferir dados para a bucket **dados_infomerc** dentro da gcp)
+                - Podemos ver a importancia do description na [visualizacão dos jobs](#visualizacao-dos-jobs)
+            - IMPORTANTE: Em "When to delete", foi marcado a opção "Delete files from destination if they're not also at source", pois, para esse projeto, por uma necessidade do cliente, é necessário, deletar todos os arquivos do lado do GCP para carregar novamente da fonte, para que não haja duplicidade de dados.
+              - Exemplo: no dia 14, existem dados do dia 1 até o dia 13. Se essa opção não estiver ligada, no dia 15, haverá dados duplicados do dia 1 até o dia 13, mais o arquivo do dia 14. Com essa opção ativada, essa duplicidade será evitada.
+
+              <img src="./images/ref/storage_transfer/step_five.jpg">
+
+            - Clique em **Create**
 
 2. Agora <a id="criacao-dos-jobs"></a> Iremos repetir esse processo de criação para criar os seguintes jobs:
-    - "dados_infomerc" (Já criado no passo 1)
+    - "dados_infomerc" (Já criado no [passo 1](#criacao-tranfer-job))
     - "objeto_dados_energia_gestao_faturas_v2"
     - "objeto_estrutura_atendimento"
     - "objeto_mailing_powerview"
@@ -60,7 +74,7 @@ No serviço de Storage Transfer, clique em **CREATE TRANSFER JOB**
 3. <a id="visualizacao-dos-jobs"></a> Após a criação, podemos visualizar os seguintes jobs criados:
 <img src="./images/ref/storage_transfer/last_step.png">
 
-4. <a id="visualizacao-dos-storages"></a>Podemos visualizar, no serviço de <a href="https://console.cloud.google.com/storage/">Cloud Storage</a>, todas as buckets criadas através do [passo 2](#criacao-dos-jobs)
+4. Podemos visualizar, no serviço de <a href="https://console.cloud.google.com/storage/">Cloud Storage</a>, todas as buckets criadas através do [passo 2](#criacao-dos-jobs)
    
 
 ### Processamento e Armazenamento de Dados
@@ -136,7 +150,7 @@ Para configurarmos a pipeline de processamento e armazenamento de dados, vamos r
       - "permissionamento_usuarios"
           <img src="./images/ref/function/step_four.png">
 
-### Erro de quota
+## Erro de quota
 
 Ao trabalhar com o BigQuery, há uma limitação na frequência de atualizações que você pode fazer nos metadados de uma tabela. Onde, nesse caso, o limite é de 5 operações por 10 segundos por tabela. Para mais informacão, <a href="https://cloud.google.com/bigquery/quotas#standard_tables">Documentação oficial da GCP</a>. 
 
@@ -146,7 +160,7 @@ Resumidamente, carregamos todos os arquivos .parquet em um dataframe pandas, e c
 Lembre-se que o pandas existe um limite de linhas/memória. Para contornar esse problema, voce deve criar "chunks" de dataframes. 
 - Exemplo: 20 arquivos .parquet = 1 dataframe; carregue esse dataframe no BigQuery, repita o processo para mais chunks.
 
-### Testando e visualizando dados
+## Testando e visualizando dados
 Para testar, vamos no cloud Schedule, selecionar um job criado, e clicar em **FORCE RUN**
 <img src="./images/ref/schedule/last_step.png">
 Após isso, para visualizarmos os dados, navegue até o <a href="https://console.cloud.google.com/bigquery">BigQuery</a> dentro da console do google, e expanda o nome do seu projeto, você verá todos os dataset criados
