@@ -20,6 +20,15 @@ O objetivo desse projeto é dividido em três partes:
 ## Arquitetura de solução
 <img src="./images/architectute/comerc_architecture.png">
 
+1. Os dados são trazidos para da AWS para a GCP através do serviço de Storage Transfer
+2. O Storage transfer armazena os dados trazidos da aws em buckets do Cloud Storage
+3. O cloud Storage armazena os arquivos .parquet em determinadas buckets
+4. O Cloud schedule é programado para acionar um tópico do Pub/Sub
+5. O tópico do Pub/Sub por sua vez aciona o Cloud Function
+6. A cloud function converte os dados parquet do Cloud Storage em Dataframes e os salva em tabelas no BigQuery
+7. As tabelas do BigQuery são usados para criar os dashboards dentro do Looker
+8. Os dashboards são configurados em um site externo (embedding) para a visualização dos usuários
+
 ## Etapas do desenvolvimento
 
 ### Configuração do Google Storage Transfer Service
