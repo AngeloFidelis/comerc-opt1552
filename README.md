@@ -80,7 +80,7 @@ O objetivo desse projeto é dividido em três partes:
 
             - Clique em **Create**
 
-2. Agora <a id="criacao-dos-jobs"></a> Iremos repetir esse processo de criação para criar os seguintes jobs (vale ressaltar que, os nomes abaixos serão usados nas Description de cada job, como podemos [visualizar aqui](#visualizacao-dos-jobs), assim como serão usados para a criação das buckets no Cloud Storage, como podemos [visualizar aqui](#visualizacao-dos-storages)):
+3. Agora <a id="criacao-dos-jobs"></a> Iremos repetir o processo de criação da [etapa 2](#criacao-tranfer-job) para criar os seguintes jobs (vale ressaltar que, os nomes abaixos serão usados nas Description de cada job, como podemos [visualizar aqui](#visualizacao-dos-jobs), assim como serão usados para a criação das buckets no Cloud Storage, como podemos [visualizar aqui](#visualizacao-dos-storages)):
     - "dados_infomerc" (Já criado no [passo 2](#criacao-tranfer-job))
     - "objeto_dados_energia_gestao_faturas_v2"
     - "objeto_estrutura_atendimento"
@@ -89,10 +89,10 @@ O objetivo desse projeto é dividido em três partes:
     - "objeto_vis_orcamento_multiunidades"
     - "permissionamento_usuarios"
 
-3. <a id="visualizacao-dos-jobs"></a> Após a criação, podemos visualizar os seguintes jobs criados:
+4. <a id="visualizacao-dos-jobs"></a> Após a criação, podemos visualizar os seguintes jobs criados:
 <img src="./images/ref/storage_transfer/last_step.png">
 
-4. <a id="visualizacao-dos-storages"></a>Agora, podemos visualizar, no serviço de <a href="https://console.cloud.google.com/storage/">Cloud Storage</a>, todas as pastas criadas dentro da bucket
+5. <a id="visualizacao-dos-storages"></a>Agora, podemos visualizar, no serviço de <a href="https://console.cloud.google.com/storage/">Cloud Storage</a>, todas as pastas criadas dentro da bucket
 <img src="./images/ref/storage/step_two.png">
    
 
@@ -102,7 +102,7 @@ Para configurarmos a pipeline de processamento e armazenamento de dados, vamos r
 
 1. <a id="trigger-config"></a> Configuração do **Cloud Scheduler** e **Pub/Sub**: configure o cloud scheduler para que possa acionar um tópico do Pub/Sub todos os dias, no mesmo horário:
     - No console do GCP, vá para <a href="https://console.cloud.google.com/cloudscheduler">Cloud Scheduler</a> e clique em "Create job"
-    - Em nome, coloque **cs_dados_infomerc**
+    - Em nome, coloque **cs_dados_infomerc** (O "cs" no início do nome é a abreviação de "Cloud Scheduler")
     - Em Region, coloque em **us-east4**
     - Em frequency, coloque: **"0 8 * * 1-5"** (está é uma especificacao do cliente para este projeto, para mais informações, acesse a <a href="https://cloud.google.com/scheduler/docs/configuring/cron-job-schedules"> documentação oficial da GCP </a>)
       - todos os dias, de segunda as sexta, as 8 horas da manhã
@@ -115,11 +115,12 @@ Para configurarmos a pipeline de processamento e armazenamento de dados, vamos r
       
       <img src="./images/ref/schedule/step_two.png">
     
-    - No painel lateral direito que abrir, coloque o nome do Pub/Sub referente ao Cloud Schedule (nesse caso será **ps_dados_infomerc**)
+    - No painel lateral direito que abrir, coloque o nome do Pub/Sub referente ao Cloud Schedule, nesse caso será **ps_dados_infomerc** (O "ps" no início do nome é a abreviação de "Pub/Sub")
     - Clique em Create
     
       <img src="./images/ref/schedule/step_three.png">
     - Por fim, coloque uma mensagem que será enviado para o Cloud function (a mensagem é obrigatória, mas o seu conteúdo pode ser personalizável).
+      - No exemplo da imagem, usei a Cloud function chamada cf_carrega_tabela_dados_infomerc para tranferir os dados do dados_informerc.
     Está mensagem irá aparecer no início do log de execução da Cloud Function
       
       <img src="./images/ref/schedule/step_four.png">
@@ -139,7 +140,7 @@ Para configurarmos a pipeline de processamento e armazenamento de dados, vamos r
 3. Agora vamos criar as funções na **Cloud Function**, que serão acionadas pelo evento do Pub/Sub. A função irá ler os dados do Cloud Storage, depois irá processar esses dados usando Python e Pandas, e por fim, irá armazenar os dados processados no BigQuery.
     - No console do GCP, vá para <a href="https://console.cloud.google.com/functions/list">Cloud Functions</a> clique em "Create function".
     - Em Enviroment, coloque **1st gen**
-    - Em Name, coloque **cf_carrega_tabela_dados_infomerc**
+    - Em Name, coloque **cf_carrega_tabela_dados_infomerc** (O "cf" no início do nome é a abreviação de "Cloud Function")
     - Em Region, coloque **us-east4**
     - Em Trigger, escolha o Cloud Pub/Sub, e selecione o tópico do pub/sub de acordo com o nome da função e clique em **Save**  
     <img src="./images/ref/function/step_one.png">
@@ -159,15 +160,20 @@ Para configurarmos a pipeline de processamento e armazenamento de dados, vamos r
           
           <img src="./images/ref/function/step_three.png">
   
-    - Repita todo o processo criando as 7 functions (DICA: selecione a função, clique em COPY, e mude o nome e o trigger da função):
-      - "cf_carrega_tabela_dados_infomerc"
-      - "cf_carrega_tabela_objeto_dados_energia_gestao_faturas_v2"
-      - "cf_carrega_tabela_objeto_estrutura_atendimento"
-      - "cf_carrega_tabela_objeto_mailing_powerview"
-      - "cf_carrega_tabela_objeto_unidades_atributos"
-      - "cf_carrega_tabela_objeto_vis_orcamento_multiunidades"
-      - "cf_carrega_tabela_permissionamento_usuarios"
-          <img src="./images/ref/function/step_four.png">
+4. Repita todo o processo criando as 7 functions (DICA: selecione a função, clique em COPY, e mude o nome e o trigger da função):
+    - "cf_carrega_tabela_dados_infomerc"
+    - "cf_carrega_tabela_objeto_dados_energia_gestao_faturas_v2"
+    - "cf_carrega_tabela_objeto_estrutura_atendimento"
+    - "cf_carrega_tabela_objeto_mailing_powerview"
+    - "cf_carrega_tabela_objeto_unidades_atributos"
+    - "cf_carrega_tabela_objeto_vis_orcamento_multiunidades"
+    - "cf_carrega_tabela_permissionamento_usuarios"
+        <img src="./images/ref/function/step_four.png">
+
+5. Após criada a função, podemos visualizar a mensagem que configuramos no Cloud Scheduler para ser enviado para a Cloud Function nos logs da função
+
+    <img src="./images/ref/function/step_five.png"/>
+
 
 ## Erro de quota
 
@@ -185,8 +191,6 @@ Para testar, vamos no cloud Schedule, selecionar um job criado, e clicar em **FO
 Após isso, para visualizarmos os dados, navegue até o <a href="https://console.cloud.google.com/bigquery">BigQuery</a> dentro da console do google, e expanda o nome do seu projeto, você verá todos os dataset criados
 
 ### Visualização da configuração final
-<img src="./images/architectute/architecture_data.svg"/>
-
-Para poder visualizar a imagem melhor, [clique aqui](./images/architectute/architecture_data.png)
+Para visualizar a arquitetura final, [clique aqui](./images/architectute/architecture_data.png)
 
 
