@@ -22,12 +22,11 @@ O objetivo desse projeto é dividido em três partes:
 
 1. Os dados são trazidos para da AWS para a GCP através do serviço de Storage Transfer
 2. O Storage transfer armazena os dados trazidos da aws em buckets do Cloud Storage
-3. O cloud Storage armazena os arquivos .parquet em determinadas buckets
-4. O Cloud schedule é programado para acionar um tópico do Pub/Sub
-5. O tópico do Pub/Sub por sua vez aciona o Cloud Function
-6. A cloud function converte os dados parquet do Cloud Storage em Dataframes e os salva em tabelas no BigQuery
-7. As tabelas do BigQuery são usados para criar os dashboards dentro do Looker
-8. Os dashboards são configurados em um site externo (embedding) para a visualização dos usuários
+3. O Cloud schedule é programado para acionar um tópico do Pub/Sub
+4. O tópico do Pub/Sub por sua vez aciona o Cloud Function
+5. A cloud function converte os dados parquet do Cloud Storage em Dataframes e os salva em tabelas no BigQuery
+6. As tabelas do BigQuery são usados para criar os dashboards dentro do Looker
+7. Os dashboards são configurados em um site externo (embedding) para a visualização dos usuários
 
 ## Etapas do desenvolvimento
 
@@ -38,10 +37,10 @@ O objetivo desse projeto é dividido em três partes:
         - Aba Get Started
             - Na opção Source Type, que define de onde os dados virão, selecione **Amazon S3**
             - Em Destination Type, que define para aonde os dados tranferidos serão armazenados, selecione **Google Cloud Storage**
-            - Em Scheduling mode, que define o modo de agendamento para a transferência de dados, selecione **Batch** (transferência em lote)
+            - Em Scheduling mode, que define o modo de agendamento para a transferência de dados, selecione **Batch** (transferência em lote - método de mover grandes quantidades de dados entre sistemas de armazenamento)
                 <img src="./images/ref/storage_transfer/step_one.png">
         - Aba Choose a Source
-            - Em **Bucket or folder**, cole o nome exato da bucket do S3 da AWS
+            - Em **Bucket or folder**, forneça o nome exato da bucket do S3 da AWS
             - Em **Authentication options**, selecione **AWS IAM role for identity federation** e cole a ARN da role criada dentro da AWS
             - Marque o checkbox da opção "Filter by prefix", e em "Include objects based on prefix" insira os nomes dos dados de acordo com o propósito de cada job. Isso é importante pois está instruindo o sistema a selecionar e incluir apenas os objetos (arquivos ou dados) cujos nomes começam com esse prefixo específico (nesse caso, o job vai tranferir todos os dados que contém o nome **dados_infomerc** para a bucket do Cloud Storage chamado **dados_infomerc**).
                 - Adcionar esse prefixo vai resultar em uma maior eficiência de tranferencia, pois estará limitando a transferência apenas aos dados relevantes, o que pode economizar tempo de processamento, custos e principalmente ajuda a manter a organizacão dos dados transferidos. 
@@ -71,7 +70,7 @@ O objetivo desse projeto é dividido em três partes:
 
             - Clique em **Create**
 
-2. Agora <a id="criacao-dos-jobs"></a> Iremos repetir esse processo de criação para criar os seguintes jobs:
+2. Agora <a id="criacao-dos-jobs"></a> Iremos repetir esse processo de criação para criar os seguintes jobs (vale ressaltar que, os nomes abaixos serão usados nas Description de cada job, como podemos [visualizar aqui](#visualizacao-dos-jobs), assim como serão usados para a criação das buckets no Cloud Storage, como podemos [visualizar aqui](#visualizacao-dos-storages)):
     - "dados_infomerc" (Já criado no [passo 1](#criacao-tranfer-job))
     - "objeto_dados_energia_gestao_faturas_v2"
     - "objeto_estrutura_atendimento"
@@ -83,7 +82,8 @@ O objetivo desse projeto é dividido em três partes:
 3. <a id="visualizacao-dos-jobs"></a> Após a criação, podemos visualizar os seguintes jobs criados:
 <img src="./images/ref/storage_transfer/last_step.png">
 
-4. Podemos visualizar, no serviço de <a href="https://console.cloud.google.com/storage/">Cloud Storage</a>, todas as buckets criadas através do [passo 2](#criacao-dos-jobs)
+4. <a id="visualizacao-dos-storages"></a>Podemos visualizar, no serviço de <a href="https://console.cloud.google.com/storage/">Cloud Storage</a>, todas as buckets criadas através do [passo 2](#criacao-dos-jobs)
+<img src="./images/ref/storage_transfer/last_step.png">
    
 
 ### Processamento e Armazenamento de Dados
@@ -91,8 +91,8 @@ O objetivo desse projeto é dividido em três partes:
 Para configurarmos a pipeline de processamento e armazenamento de dados, vamos realizar o seguinte passo-a-passo:
 
 1. <a id="trigger-config"></a> Configuração do **Cloud Scheduler** e **Pub/Sub**: configure o cloud scheduler para que possa acionar um tópico do Pub/Sub todos os dias, no mesmo horário:
-    - No console do GCP, vá para "Cloud Scheduler" e clique em "Create job"
-    - Em nome, coloque "cs_dados_infomerc"
+    - No console do GCP, vá para <a href="https://console.cloud.google.com/cloudscheduler">Cloud Scheduler</a> e clique em "Create job"
+    - Em nome, coloque **cs_dados_infomerc**
     - Em Region, coloque em **us-east4**
     - Em frequency, coloque: **"0 8 * * 1-5"** (está é uma especificacao do cliente para este projeto, para mais informações, acesse a <a href="https://cloud.google.com/scheduler/docs/configuring/cron-job-schedules"> documentação oficial da GCP </a>)
       - todos os dias, de segunda as sexta, as 8 horas da manhã
@@ -114,7 +114,7 @@ Para configurarmos a pipeline de processamento e armazenamento de dados, vamos r
       
       <img src="./images/ref/schedule/step_four.png">
 
-2. Agora, vamos replicar o passo 1 para criar os demais Schedules:
+2. Agora, precisamos criar todas as schedules, para isso, vamos repetir o [passo 1](#trigger-config), criando as demais schedules, junto com seus respectivos tópicos no pubsub
 
     | Nome do Schedule | Tópico do Pub/Sub |
     | ---------------- | ----------------- |
@@ -127,7 +127,7 @@ Para configurarmos a pipeline de processamento e armazenamento de dados, vamos r
     | cs_permissionamento_usuarios | ps_permissionamento_usuarios |
 
 3. Agora vamos criar as funções na **Cloud Function**, que serão acionadas pelo evento do Pub/Sub. A função irá ler os dados do Cloud Storage, depois irá processar esses dados usando Python e Pandas, e por fim, irá armazenar os dados processados no BigQuery.
-    - No console do GCP, vá para "Cloud Functions" clique em "Create function".
+    - No console do GCP, vá para <a href="https://console.cloud.google.com/functions/list">Cloud Functions</a> clique em "Create function".
     - Em Enviroment, coloque **1st gen**
     - Em Name, coloque **cf_carrega_tabela_dados_infomerc**
     - Em Region, coloque **us-east4**
@@ -150,13 +150,13 @@ Para configurarmos a pipeline de processamento e armazenamento de dados, vamos r
           <img src="./images/ref/function/step_three.png">
   
     - Repita todo o processo criando as 7 functions (DICA: selecione a função, clique em COPY, e mude o nome e o trigger da função):
-      - "dados_infomerc"
-      - "objeto_dados_energia_gestao_faturas_v2"
-      - "objeto_estrutura_atendimento"
-      - "objeto_mailing_powerview"
-      - "objeto_unidades_atributos"
-      - "objeto_vis_orcamento_multiunidades"
-      - "permissionamento_usuarios"
+      - "cf_carrega_tabela_dados_infomerc"
+      - "cf_carrega_tabela_objeto_dados_energia_gestao_faturas_v2"
+      - "cf_carrega_tabela_objeto_estrutura_atendimento"
+      - "cf_carrega_tabela_objeto_mailing_powerview"
+      - "cf_carrega_tabela_objeto_unidades_atributos"
+      - "cf_carrega_tabela_objeto_vis_orcamento_multiunidades"
+      - "cf_carrega_tabela_permissionamento_usuarios"
           <img src="./images/ref/function/step_four.png">
 
 ## Erro de quota
