@@ -21,7 +21,7 @@ O objetivo desse projeto é dividido em três partes:
 <img src="./images/architectute/comerc_architecture.png">
 
 1. Os dados são trazidos para da AWS para a GCP através do serviço de Storage Transfer
-2. O Storage transfer armazena os dados trazidos da aws em buckets do Cloud Storage
+2. O Storage transfer armazena os dados trazidos da aws em uma bucket do Cloud Storage
 3. O Cloud schedule é programado para acionar um tópico do Pub/Sub
 4. O tópico do Pub/Sub por sua vez aciona o Cloud Function
 5. A cloud function converte os dados parquet do Cloud Storage em Dataframes e os salva em tabelas no BigQuery
@@ -32,7 +32,14 @@ O objetivo desse projeto é dividido em três partes:
 
 ### Configuração do Google Storage Transfer Service
 
-1. <a id="criacao-tranfer-job"></a> Passo-a-passo de configuração do tranfer job
+1. <a id="criacao-bucket"></a> Primeiro, vamos criar uma bucket no cloud Storage
+    - No serviço do <a href="https://console.cloud.google.com/storage/">Cloud Storage</a>, clique em **CREATE**
+    - Atribua o mome **804171967601-comerc-aws-destination-bucket**
+    - Em Region, informe a região **us-east4** 
+    - As demais configurações deixe como padrão e clique em CREATE
+      <img src="./images/ref/storage/step_one.png">
+
+2. <a id="criacao-tranfer-job"></a> Passo-a-passo de configuração do tranfer job
     - No serviço de Storage Transfer, clique em **CREATE TRANSFER JOB**
         - Aba Get Started
             - Na opção Source Type, que define de onde os dados virão, selecione **Amazon S3**
@@ -42,19 +49,22 @@ O objetivo desse projeto é dividido em três partes:
         - Aba Choose a Source
             - Em **Bucket or folder**, forneça o nome exato da bucket do S3 da AWS
             - Em **Authentication options**, selecione **AWS IAM role for identity federation** e cole a ARN da role criada dentro da AWS
-            - Marque o checkbox da opção "Filter by prefix", e em "Include objects based on prefix" insira os nomes dos dados de acordo com o propósito de cada job. Isso é importante pois está instruindo o sistema a selecionar e incluir apenas os objetos (arquivos ou dados) cujos nomes começam com esse prefixo específico (nesse caso, o job vai tranferir todos os dados que contém o nome **dados_infomerc** para a bucket do Cloud Storage chamado **dados_infomerc**).
-                - Adcionar esse prefixo vai resultar em uma maior eficiência de tranferencia, pois estará limitando a transferência apenas aos dados relevantes, o que pode economizar tempo de processamento, custos e principalmente ajuda a manter a organizacão dos dados transferidos. 
+            - Marque o checkbox da opção "Filter by prefix", e em "Include objects based on prefix" insira o prefixo de acordo com o propósito de cada job. Isso é importante para duas coisas:
+              - Estará instruindo o sistema a selecionar e incluir apenas os objetos (arquivos ou dados) cujos nomes começam com esse prefixo específico (nesse caso, o job vai tranferir todos os dados que contém o nome **dados_infomerc** da bucket da AWS para a bucket do Cloud Storage).
+              - Irá criar uma pasta dentro da bucket no cloud storage para deixar todos os dados organizados. Ou seja, o job vai tranferir todos os dados que contém o nome **dados_infomerc** para uma pasta chamada **dados_infomerc** dentro da bucket do Cloud Storage
+              
                 <img src="./images/ref/storage_transfer/step_two.jpg"/>
+              
+                  - Adcionar esse prefixo vai resultar em uma maior eficiência de tranferencia, pois estará limitando a transferência apenas aos dados relevantes, o que pode economizar tempo de processamento, custos e principalmente ajuda a manter a organizacão dos dados transferidos. 
         - Aba Choose a destination
-            - Em **Bucket or folder**, clique em BROWSER, e, no painel lateral clique no ícone para criar uma nova bucket. 
+            - Em **Bucket or folder**, clique em BROWSER, e, no painel lateral selecione a bucket criada no [passo 1](#criacao-bucket)
                 
-                <img src="./images/ref/storage_transfer/step_three_one.png"/>
+                <img src="./images/ref/storage_transfer/step_three.png"/>
             
-            - Coloque o nome referente aos dados que serão tranferidos (nesse cado, **dados_infomerc**) e a região como **us-east4** e clique em CREATE. 
-                
-                <img src="./images/ref/storage_transfer/step_three_two.png"/>
-            
-            - Após criado, selecione a bucket criada e clique em SELECT
+            - IMPORTANTE: o nome que configuramos no **prefixo** em **Choose a Source**, será o nome da pasta onde os dados irão residir dentro dessa bucket. Nesse caso, a estrutura de pasta ficará da seguinte forma: 
+              ```sh
+              804171967601-comerc-aws-destination-bucket/dados_infomerc
+              ```
         - Aba Choose when to run job
             - Nessa parte, vamos configurar o job para rodar todos os dias, começando a partir do dia seguinte, as 8:00 AM, sem especifícar uma data de término 
                 
@@ -71,7 +81,7 @@ O objetivo desse projeto é dividido em três partes:
             - Clique em **Create**
 
 2. Agora <a id="criacao-dos-jobs"></a> Iremos repetir esse processo de criação para criar os seguintes jobs (vale ressaltar que, os nomes abaixos serão usados nas Description de cada job, como podemos [visualizar aqui](#visualizacao-dos-jobs), assim como serão usados para a criação das buckets no Cloud Storage, como podemos [visualizar aqui](#visualizacao-dos-storages)):
-    - "dados_infomerc" (Já criado no [passo 1](#criacao-tranfer-job))
+    - "dados_infomerc" (Já criado no [passo 2](#criacao-tranfer-job))
     - "objeto_dados_energia_gestao_faturas_v2"
     - "objeto_estrutura_atendimento"
     - "objeto_mailing_powerview"
@@ -82,8 +92,8 @@ O objetivo desse projeto é dividido em três partes:
 3. <a id="visualizacao-dos-jobs"></a> Após a criação, podemos visualizar os seguintes jobs criados:
 <img src="./images/ref/storage_transfer/last_step.png">
 
-4. <a id="visualizacao-dos-storages"></a>Podemos visualizar, no serviço de <a href="https://console.cloud.google.com/storage/">Cloud Storage</a>, todas as buckets criadas através do [passo 2](#criacao-dos-jobs)
-<img src="./images/ref/storage_transfer/last_step.png">
+4. <a id="visualizacao-dos-storages"></a>Agora, podemos visualizar, no serviço de <a href="https://console.cloud.google.com/storage/">Cloud Storage</a>, todas as pastas criadas dentro da bucket
+<img src="./images/ref/storage/step_two.png">
    
 
 ### Processamento e Armazenamento de Dados
